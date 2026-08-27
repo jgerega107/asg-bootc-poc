@@ -35,6 +35,20 @@ LABEL org.opencontainers.image.title="Fedora bootc Vault" \
       org.opencontainers.image.version="${VAULT_VERSION}" \
       org.opencontainers.image.base.name="quay.io/fedora/fedora-bootc:latest"
 
+# Install cloud-init for cloud and NoCloud provisioning.
+RUN dnf -y install cloud-init \
+    && dnf clean all \
+    && rm -rf \
+      /run/cloud-init \
+      /run/dnf \
+      /var/cache/dnf \
+      /var/cache/libdnf5 \
+      /var/lib/cloud \
+      /var/lib/dnf \
+    && rm -f \
+      /var/cache/ldconfig/aux-cache \
+      /var/log/dnf5.log
+
 # Copy vault from staged build
 COPY --from=vault-download /out/usr/bin/vault /usr/bin/vault
 COPY vault.hcl /etc/vault.d/vault.hcl
@@ -45,6 +59,11 @@ COPY vault.sysusers /usr/lib/sysusers.d/vault.conf
 RUN systemd-sysusers /usr/lib/sysusers.d/vault.conf \
     && chmod 0640 /etc/vault.d/vault.hcl \
     && chown root:vault /etc/vault.d/vault.hcl \
+    && systemctl enable \
+      cloud-init-local.service \
+      cloud-init-main.service \
+      cloud-config.service \
+      cloud-final.service \
     && systemctl enable vault.service \
     && bootc container lint --fatal-warnings
 

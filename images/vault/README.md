@@ -3,7 +3,8 @@
 This repository builds a bootable HashiCorp Vault appliance from the latest
 official Fedora bootc base. The base supplies systemd, a kernel, initramfs,
 bootloader integration, OSTree, and `bootc`; this image adds Vault 2.0.4 and a
-native systemd service.
+native systemd service. Cloud-init is installed for cloud-provider and local
+NoCloud provisioning.
 
 The Vault archive is pinned and SHA-256 verified for amd64 and arm64 builds.
 
