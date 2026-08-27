@@ -1,0 +1,63 @@
+services:
+  vault:
+    build:
+      context: ./images/vault
+      dockerfile: Containerfile
+    privileged: true
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault-data:/var/lib/vault
+      - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
+      - ./compose/vault/etc/vault.d/vault.hcl:/etc/vault.d/vault.hcl:ro
+    networks:
+      hashicorp:
+        aliases:
+          - vault
+
+  nomad-server:
+    build:
+      context: ./images/nomad-server
+      dockerfile: Containerfile
+    privileged: true
+    depends_on:
+      - vault
+    ports:
+      - "4646:4646"
+    volumes:
+      - nomad-server-data:/var/lib/nomad
+      - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
+      - ./compose/nomad-server/etc/systemd/system/nomad.service:/etc/systemd/system/nomad.service:ro
+    networks:
+      hashicorp:
+        aliases:
+          - nomad-server
+
+  nomad-client:
+    build:
+      context: ./images/nomad-client
+      dockerfile: Containerfile
+    privileged: true
+    depends_on:
+      - vault
+      - nomad-server
+    volumes:
+      - nomad-client-data:/var/lib/nomad
+      - docker-data:/var/lib/docker
+      - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
+      - ./compose/nomad-client/etc/nomad.d/90-runtime.hcl:/etc/nomad.d/90-runtime.hcl:ro
+      - ./compose/nomad-client/etc/systemd/system/nomad.service:/etc/systemd/system/nomad.service:ro
+    networks:
+      hashicorp:
+        aliases:
+          - nomad-client
+
+networks:
+  hashicorp:
+    driver: bridge
+
+volumes:
+  vault-data:
+  nomad-server-data:
+  nomad-client-data:
+  docker-data:
