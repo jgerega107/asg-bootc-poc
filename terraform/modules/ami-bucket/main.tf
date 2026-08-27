@@ -1,5 +1,7 @@
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "this" {
-  bucket = var.bucket_name
+  bucket = format("${var.bucket_name}-%s", data.aws_caller_identity.current.account_id)
 
   tags = merge(var.tags, {
     Name = var.bucket_name
