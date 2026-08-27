@@ -1,0 +1,15 @@
+#cloud-config
+write_files:
+  - path: /etc/nomad.d/90-runtime.hcl
+    owner: root:root
+    permissions: "0640"
+    content: |
+      client {
+        enabled = true
+        servers = ["nomad.service.example.com:4647"]
+      }
+
+      vault {
+        enabled = true
+        address = "https://vault.service.example.com:8200"
+      }

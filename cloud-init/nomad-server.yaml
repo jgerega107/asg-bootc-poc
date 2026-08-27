@@ -1,0 +1,9 @@
+#cloud-config
+write_files:
+  - path: /etc/nomad.d/90-runtime.hcl
+    owner: root:nomad
+    permissions: "0640"
+    content: |
+      server_join {
+        retry_join = ["nomad.service.example.com"]
+      }
