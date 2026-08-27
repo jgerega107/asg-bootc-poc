@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1
+
+ARG FEDORA_VERSION=latest
+
+FROM registry.fedoraproject.org/fedora-minimal:${FEDORA_VERSION} AS vault-download
+
+ARG TARGETARCH=amd64
+ARG VAULT_VERSION=2.0.4
+
+RUN microdnf -y install ca-certificates curl unzip \
+    && microdnf clean all
+
+# Download and extract Vault
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+      amd64) vault_arch=amd64; vault_sha256=7429e7d85f8ef29df063701c49420f7984a0ae2c8511c026cc75edfbbb2df387 ;; \
+      arm64) vault_arch=arm64; vault_sha256=87bb68fdd04ca90cd4cf54f8cd783a037fbf860b73d85e6697f6129dac49c683 ;; \
+      *) echo "Unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    vault_archive="vault_${VAULT_VERSION}_linux_${vault_arch}.zip"; \
+    curl --fail --silent --show-error --location \
+      --output "/tmp/${vault_archive}" \
+      "https://releases.hashicorp.com/vault/${VAULT_VERSION}/${vault_archive}"; \
+    printf '%s  %s\n' "${vault_sha256}" "/tmp/${vault_archive}" | sha256sum -c -; \
+    unzip -q "/tmp/${vault_archive}" -d /tmp/vault; \
+    install -D -m 0755 /tmp/vault/vault /out/usr/bin/vault
+
+FROM quay.io/fedora/fedora-bootc:latest
+
+ARG VAULT_VERSION=2.0.4
+
+# Set labels
+LABEL org.opencontainers.image.title="Fedora bootc Vault" \
+      org.opencontainers.image.description="HashiCorp Vault appliance based on Fedora bootc" \
+      org.opencontainers.image.version="${VAULT_VERSION}" \
+      org.opencontainers.image.base.name="quay.io/fedora/fedora-bootc:latest"
+
+# Copy vault from staged build
+COPY --from=vault-download /out/usr/bin/vault /usr/bin/vault
+COPY vault.hcl /etc/vault.d/vault.hcl
+COPY vault.service /usr/lib/systemd/system/vault.service
+COPY vault.sysusers /usr/lib/sysusers.d/vault.conf
+
+# Create users/groups, set permissions, then lint
+RUN systemd-sysusers /usr/lib/sysusers.d/vault.conf \
+    && chmod 0640 /etc/vault.d/vault.hcl \
+    && chown root:vault /etc/vault.d/vault.hcl \
+    && systemctl enable vault.service \
+    && bootc container lint --fatal-warnings
+
+EXPOSE 8200 8201
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]
