@@ -1,0 +1,30 @@
+[Unit]
+Description=HashiCorp Nomad client
+Documentation=https://developer.hashicorp.com/nomad/docs
+Wants=network-online.target
+After=network-online.target docker.service cloud-final.service
+Requires=docker.service cloud-final.service
+ConditionFileNotEmpty=/etc/nomad.d/nomad.hcl
+ConditionFileNotEmpty=/etc/nomad.d/90-runtime.hcl
+
+[Service]
+User=root
+Group=root
+Type=notify
+EnvironmentFile=-/etc/nomad.d/nomad.env
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/usr/bin/nomad agent -config /etc/nomad.d
+KillMode=process
+KillSignal=SIGINT
+LimitNOFILE=65536
+LimitNPROC=infinity
+Restart=on-failure
+RestartSec=2
+TasksMax=infinity
+OOMScoreAdjust=-1000
+StateDirectory=nomad
+StateDirectoryMode=0700
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

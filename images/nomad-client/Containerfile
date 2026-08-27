@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1
+
+FROM registry.fedoraproject.org/fedora-minimal:latest AS nomad-download
+
+ARG TARGETARCH=amd64
+ARG NOMAD_VERSION=2.0.5
+
+RUN microdnf -y install ca-certificates curl unzip && microdnf clean all
+
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+      amd64) nomad_arch=amd64; nomad_sha256=6425e43967bb0b2b4979b0d06da9b06772848b658dae372f1256d51ddcfe53c3 ;; \
+      arm64) nomad_arch=arm64; nomad_sha256=63186442061f3f86ec7d10615a91435779a84ed2bf6111bfcba3c0acf71dabb7 ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    archive="nomad_${NOMAD_VERSION}_linux_${nomad_arch}.zip"; \
+    curl --fail --silent --show-error --location \
+      --output "/tmp/${archive}" \
+      "https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/${archive}"; \
+    printf '%s  %s\n' "${nomad_sha256}" "/tmp/${archive}" | sha256sum -c -; \
+    unzip -q "/tmp/${archive}" -d /tmp/nomad; \
+    install -D -m 0755 /tmp/nomad/nomad /out/usr/bin/nomad
+
+FROM quay.io/fedora/fedora-bootc:latest
+
+ARG NOMAD_VERSION=2.0.5
+
+LABEL org.opencontainers.image.title="Fedora bootc Nomad client" \
+      org.opencontainers.image.version="${NOMAD_VERSION}" \
+      org.opencontainers.image.base.name="quay.io/fedora/fedora-bootc:latest"
+
+RUN dnf -y install cloud-init moby-engine \
+    && dnf clean all \
+    && rm -rf /run/cloud-init /run/dnf /var/cache/dnf /var/cache/libdnf5 /var/lib/cloud /var/lib/dnf /var/lib/docker \
+    && rm -f /var/cache/ldconfig/aux-cache /var/log/dnf5.log
+
+COPY --from=nomad-download /out/usr/bin/nomad /usr/bin/nomad
+COPY nomad.hcl /etc/nomad.d/nomad.hcl
+COPY nomad.service /usr/lib/systemd/system/nomad.service
+
+RUN chmod 0640 /etc/nomad.d/nomad.hcl \
+    && chown root:root /etc/nomad.d/nomad.hcl \
+    && nomad config validate /etc/nomad.d \
+    && systemctl enable cloud-init-local.service cloud-init-main.service cloud-config.service cloud-final.service \
+    && systemctl enable docker.service nomad.service \
+    && bootc container lint --fatal-warnings
+
+EXPOSE 4646 4647 4648
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]
