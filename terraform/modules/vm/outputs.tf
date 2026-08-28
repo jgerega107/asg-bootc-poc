@@ -22,3 +22,8 @@ output "root_volume_id" {
   description = "ID of the instance's root disk."
   value       = aws_instance.this.root_block_device[0].volume_id
 }
+
+output "iam_instance_profile_name" {
+  description = "Name of the IAM instance profile attached to the instance."
+  value       = aws_iam_instance_profile.this.name
+}

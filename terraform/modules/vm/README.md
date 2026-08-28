@@ -25,3 +25,7 @@ instance so cloud-init runs with the new content.
 
 The instance and root disk receive a Name tag based on name; additional
 tags can be supplied through tags.
+
+The module creates an instance profile and an EC2 role for every instance. The
+role grants only the EC2 describe permissions needed by Consul and Nomad cloud
+auto-join.

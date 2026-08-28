@@ -7,6 +7,8 @@ resource "aws_instance" "this" {
   associate_public_ip_address = var.associate_public_ip_address
   source_dest_check           = var.source_dest_check
 
+  iam_instance_profile = aws_iam_instance_profile.this.name
+
   user_data                   = var.user_data
   user_data_replace_on_change = true
 
