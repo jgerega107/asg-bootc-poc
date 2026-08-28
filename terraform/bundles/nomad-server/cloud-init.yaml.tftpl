@@ -1,0 +1,19 @@
+#cloud-config
+users:
+  - name: ${jsonencode(username)}
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${jsonencode(ssh_public_key)}
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    shell: /bin/bash
+
+write_files:
+  - path: /etc/nomad.d/90-runtime.hcl
+    owner: root:nomad
+    permissions: "0640"
+    content: |
+      server {
+        server_join {
+          retry_join = [${jsonencode(server_join)}]
+        }
+      }
