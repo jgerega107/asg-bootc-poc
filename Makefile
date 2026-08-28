@@ -58,6 +58,7 @@ $(eval $(call COMPONENT,consul-server,CONSUL_SERVER))
 
 $(IMAGE_TARGETS):
 	$(SUDO) $(PODMAN) build \
+		--network=host \
 		-t $(BUILD_IMAGE) \
 		-f $(IMAGE_DIR)/Containerfile \
 		$(IMAGE_DIR)
