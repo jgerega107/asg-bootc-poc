@@ -7,4 +7,4 @@ set the Vault address and other first-boot configuration.
 
 The example writes the stable Nomad peer endpoint directly to
 `/etc/nomad.d/90-runtime.hcl`. Servers do not receive a Vault address. Nomad is
-ordered after `cloud-final.service` and requires the runtime HCL file.
+ordered after `cloud-config.service` and requires the runtime HCL file.

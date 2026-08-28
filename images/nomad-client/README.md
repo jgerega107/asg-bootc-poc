@@ -6,5 +6,7 @@ Docker task driver is configured with bind and named-volume support. Cloud-init
 can set the Nomad servers and Vault address on first boot.
 
 Cloud-init writes `/etc/nomad.d/90-runtime.hcl` directly with the stable Nomad
-server and Vault endpoints. Nomad is ordered after `cloud-final.service` and
+server and Vault endpoints. Nomad is ordered after `cloud-config.service` and
 does not start unless that runtime configuration file is present and non-empty.
+Clients leave the cluster and drain allocations for up to five minutes when
+they receive a shutdown signal.

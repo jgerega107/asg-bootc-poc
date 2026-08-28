@@ -2,8 +2,8 @@
 Description=HashiCorp Nomad server
 Documentation=https://developer.hashicorp.com/nomad/docs
 Wants=network-online.target
-After=network-online.target cloud-final.service
-Requires=cloud-final.service
+After=network-online.target cloud-config.service
+Requires=cloud-config.service
 ConditionFileNotEmpty=/etc/nomad.d/nomad.hcl
 ConditionFileNotEmpty=/etc/nomad.d/90-runtime.hcl
 
