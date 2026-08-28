@@ -2,3 +2,4 @@ output/
 .terraform*
 *.tfstate
 *.tfstate.backup
+*.tfvars

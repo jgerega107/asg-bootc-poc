@@ -23,6 +23,11 @@ output "private_subnet_id" {
   value       = aws_subnet.private.id
 }
 
+output "private_subnet_cidr" {
+  description = "IPv4 CIDR block of the isolated application subnet."
+  value       = aws_subnet.private.cidr_block
+}
+
 output "public_route_table_id" {
   description = "ID of the public route table."
   value       = aws_route_table.public.id
