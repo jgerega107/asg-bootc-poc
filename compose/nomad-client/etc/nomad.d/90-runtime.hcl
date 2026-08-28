@@ -1,6 +1,5 @@
 client {
   enabled = true
-  servers = ["nomad-server:4647"]
 }
 
 vault {

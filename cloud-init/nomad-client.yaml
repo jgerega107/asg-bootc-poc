@@ -6,7 +6,6 @@ write_files:
     content: |
       client {
         enabled = true
-        servers = ["nomad.service.example.com:4647"]
       }
 
       vault {

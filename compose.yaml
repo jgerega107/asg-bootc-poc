@@ -11,7 +11,6 @@ services:
     volumes:
       - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
       - ./compose/consul/etc/consul.d/90-runtime.hcl:/etc/consul.d/90-runtime.hcl:ro
-      - ./compose/consul/etc/systemd/system/consul.service:/etc/systemd/system/consul.service:ro
       - ./compose/vault/etc/vault.d/90-runtime.hcl:/etc/vault.d/90-runtime.hcl:ro
     networks:
       hashicorp:
@@ -45,8 +44,7 @@ services:
     volumes:
       - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
       - ./compose/consul/etc/consul.d/90-runtime.hcl:/etc/consul.d/90-runtime.hcl:ro
-      - ./compose/consul/etc/systemd/system/consul.service:/etc/systemd/system/consul.service:ro
-      - ./compose/nomad-server/etc/systemd/system/nomad.service:/etc/systemd/system/nomad.service:ro
+      - ./compose/nomad-server/etc/nomad.d/90-runtime.hcl:/etc/nomad.d/90-runtime.hcl:ro
     networks:
       hashicorp:
         aliases:
@@ -64,9 +62,7 @@ services:
     volumes:
       - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
       - ./compose/consul/etc/consul.d/90-runtime.hcl:/etc/consul.d/90-runtime.hcl:ro
-      - ./compose/consul/etc/systemd/system/consul.service:/etc/systemd/system/consul.service:ro
       - ./compose/nomad-client/etc/nomad.d/90-runtime.hcl:/etc/nomad.d/90-runtime.hcl:ro
-      - ./compose/nomad-client/etc/systemd/system/nomad.service:/etc/systemd/system/nomad.service:ro
     networks:
       hashicorp:
         aliases:

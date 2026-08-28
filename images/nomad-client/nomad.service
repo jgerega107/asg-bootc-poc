@@ -1,9 +1,9 @@
 [Unit]
-Description=HashiCorp Nomad client
+Description=Nomad
 Documentation=https://developer.hashicorp.com/nomad/docs
 Wants=network-online.target
-After=network-online.target docker.service cloud-config.service
-Requires=docker.service cloud-config.service
+After=network-online.target docker.service cloud-config.service consul.service
+Requires=docker.service cloud-config.service consul.service
 ConditionFileNotEmpty=/etc/nomad.d/nomad.hcl
 ConditionFileNotEmpty=/etc/nomad.d/90-runtime.hcl
 

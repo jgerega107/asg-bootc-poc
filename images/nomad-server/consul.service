@@ -1,7 +1,5 @@
-# Based on HashiCorp's packaged Consul unit:
-# https://github.com/hashicorp/consul/blob/main/.release/linux/package/usr/lib/systemd/system/consul.service
 [Unit]
-Description="HashiCorp Consul client agent"
+Description="HashiCorp Consul - A service mesh solution"
 Documentation=https://developer.hashicorp.com/consul/docs
 Requires=network-online.target cloud-config.service
 After=network-online.target cloud-config.service
