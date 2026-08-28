@@ -7,4 +7,3 @@ variable "bucket_name" {
   description = "Globally unique name for the bootc image bucket."
   type        = string
 }
-
