@@ -9,11 +9,10 @@ services:
     ports:
       - "8200:8200"
     volumes:
-      - vault-data:/var/lib/vault
       - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
       - ./compose/consul/etc/consul.d/90-runtime.hcl:/etc/consul.d/90-runtime.hcl:ro
       - ./compose/consul/etc/systemd/system/consul.service:/etc/systemd/system/consul.service:ro
-      - ./compose/vault/etc/vault.d/vault.hcl:/etc/vault.d/vault.hcl:ro
+      - ./compose/vault/etc/vault.d/90-runtime.hcl:/etc/vault.d/90-runtime.hcl:ro
     networks:
       hashicorp:
         aliases:
@@ -27,7 +26,6 @@ services:
     ports:
       - "8500:8500"
     volumes:
-      - consul-server-data:/var/lib/consul
       - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
     networks:
       hashicorp:
@@ -45,7 +43,6 @@ services:
     ports:
       - "4646:4646"
     volumes:
-      - nomad-server-data:/var/lib/nomad
       - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
       - ./compose/consul/etc/consul.d/90-runtime.hcl:/etc/consul.d/90-runtime.hcl:ro
       - ./compose/consul/etc/systemd/system/consul.service:/etc/systemd/system/consul.service:ro
@@ -65,8 +62,6 @@ services:
       - nomad-server
       - consul-server
     volumes:
-      - nomad-client-data:/var/lib/nomad
-      - docker-data:/var/lib/docker
       - ./compose/etc/nsswitch.conf:/etc/nsswitch.conf:ro
       - ./compose/consul/etc/consul.d/90-runtime.hcl:/etc/consul.d/90-runtime.hcl:ro
       - ./compose/consul/etc/systemd/system/consul.service:/etc/systemd/system/consul.service:ro
@@ -80,10 +75,3 @@ services:
 networks:
   hashicorp:
     driver: bridge
-
-volumes:
-  vault-data:
-  consul-server-data:
-  nomad-server-data:
-  nomad-client-data:
-  docker-data:

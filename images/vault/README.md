@@ -2,9 +2,9 @@
 
 This repository builds a bootable HashiCorp Vault appliance from the latest
 official Fedora bootc base. The base supplies systemd, a kernel, initramfs,
-bootloader integration, OSTree, and `bootc`; this image adds Vault 2.0.4 and a
-native systemd service. Cloud-init is installed for cloud-provider and local
-NoCloud provisioning.
+bootloader integration, OSTree, and `bootc`; this image adds Vault 2.0.4, a
+Consul client, and native systemd services. Cloud-init is installed for
+cloud-provider and local NoCloud provisioning.
 
 The Vault archive is pinned and SHA-256 verified for amd64 and arm64 builds.
 
@@ -22,6 +22,11 @@ updating `VAULT_VERSION`, update the architecture-specific checksums too.
 Vault reads `/etc/vault.d/vault.hcl`. The included example uses integrated Raft
 storage at `/var/lib/vault/data`; systemd creates and preserves `/var/lib/vault`
 through `StateDirectory=vault`.
+
+The Consul client reads `/etc/consul.d/consul.hcl` and its cloud-init-generated
+`90-runtime.hcl` join configuration. Vault registers its API as the `vault`
+service through the local Consul agent and marks sealed instances unhealthy.
+The Consul service waits for `cloud-config.service` before starting.
 
 The example listener disables TLS and is not production-ready. Before deploying,
 provide trusted TLS material, set externally reachable `api_addr` and

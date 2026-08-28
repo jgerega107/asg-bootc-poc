@@ -14,3 +14,5 @@ listener "tcp" {
   cluster_address = "0.0.0.0:8201"
   tls_disable     = true
 }
+
+service_registration "consul" {}

@@ -28,13 +28,3 @@ plugin "docker" {
     allow_privileged = false
   }
 }
-
-consul {
-  auto_advertise   = false
-  server_auto_join = false
-  client_auto_join = false
-}
-
-vault {
-  enabled = true
-}

@@ -4,6 +4,7 @@ FROM registry.fedoraproject.org/fedora-minimal:latest AS nomad-download
 
 ARG TARGETARCH=amd64
 ARG NOMAD_VERSION=2.0.5
+ARG CONSUL_VERSION=2.0.3
 
 RUN microdnf -y install ca-certificates curl unzip && microdnf clean all
 
@@ -21,9 +22,24 @@ RUN set -eux; \
     unzip -q "/tmp/${archive}" -d /tmp/nomad; \
     install -D -m 0755 /tmp/nomad/nomad /out/usr/bin/nomad
 
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+      amd64) consul_arch=amd64; consul_sha256=3020eea3fdfd939eb021ecaca105a1513af52b22e76f2ee97ea85acc6ff2f832 ;; \
+      arm64) consul_arch=arm64; consul_sha256=7551d8f07cbfb633d260fe27a9f7144ce08f1cb964e31e15788309dfb6c2fda5 ;; \
+      *) echo "Unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    consul_archive="consul_${CONSUL_VERSION}_linux_${consul_arch}.zip"; \
+    curl --fail --silent --show-error --location \
+      --output "/tmp/${consul_archive}" \
+      "https://releases.hashicorp.com/consul/${CONSUL_VERSION}/${consul_archive}"; \
+    printf '%s  %s\n' "${consul_sha256}" "/tmp/${consul_archive}" | sha256sum -c -; \
+    unzip -q "/tmp/${consul_archive}" -d /tmp/consul; \
+    install -D -m 0755 /tmp/consul/consul /out/usr/bin/consul
+
 FROM quay.io/fedora/fedora-bootc:latest
 
 ARG NOMAD_VERSION=2.0.5
+ARG CONSUL_VERSION=2.0.3
 
 LABEL org.opencontainers.image.title="Fedora bootc Nomad client" \
       org.opencontainers.image.version="${NOMAD_VERSION}" \
@@ -35,16 +51,24 @@ RUN dnf -y install cloud-init moby-engine \
     && rm -f /var/cache/ldconfig/aux-cache /var/log/dnf5.log
 
 COPY --from=nomad-download /out/usr/bin/nomad /usr/bin/nomad
+COPY --from=nomad-download /out/usr/bin/consul /usr/bin/consul
 COPY nomad.hcl /etc/nomad.d/nomad.hcl
 COPY nomad.service /usr/lib/systemd/system/nomad.service
+COPY consul.hcl /etc/consul.d/consul.hcl
+COPY consul.service /usr/lib/systemd/system/consul.service
+COPY consul.sysusers /usr/lib/sysusers.d/consul.conf
 
-RUN chmod 0640 /etc/nomad.d/nomad.hcl \
+RUN systemd-sysusers /usr/lib/sysusers.d/consul.conf \
+    && chmod 0640 /etc/nomad.d/nomad.hcl \
     && chown root:root /etc/nomad.d/nomad.hcl \
     && nomad config validate /etc/nomad.d \
+    && chmod 0640 /etc/consul.d/consul.hcl \
+    && chown root:consul /etc/consul.d/consul.hcl \
+    && consul validate /etc/consul.d \
     && systemctl enable cloud-init-local.service cloud-init-main.service cloud-config.service cloud-final.service \
-    && systemctl enable docker.service nomad.service \
+    && systemctl enable docker.service nomad.service consul.service \
     && bootc container lint --fatal-warnings
 
-EXPOSE 4646 4647 4648
+EXPOSE 4646 4647 4648 8301/tcp 8301/udp
 STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]
