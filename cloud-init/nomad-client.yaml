@@ -13,3 +13,9 @@ write_files:
         enabled = true
         address = "https://vault.service.example.com:8200"
       }
+
+  - path: /etc/consul.d/90-runtime.hcl
+    owner: root:consul
+    permissions: "0640"
+    content: |
+      retry_join = ["provider=aws tag_key=Name tag_value=consul-server region=us-east-1"]

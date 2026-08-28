@@ -30,21 +30,28 @@ NOMAD_CLIENT_QCOW2 ?= $(OUTPUT_DIR)/nomad-client.qcow2
 NOMAD_CLIENT_RAW ?= $(OUTPUT_DIR)/nomad-client.raw
 NOMAD_CLIENT_AMI_NAME ?= nomad-client
 
+CONSUL_SERVER_IMAGE ?= localhost/fedora-bootc-consul-server:latest
+CONSUL_SERVER_DIR ?= $(CURDIR)/images/consul-server
+CONSUL_SERVER_QCOW2 ?= $(OUTPUT_DIR)/consul-server.qcow2
+CONSUL_SERVER_RAW ?= $(OUTPUT_DIR)/consul-server.raw
+CONSUL_SERVER_AMI_NAME ?= consul-server
+
 ifneq ($(wildcard $(CONFIG)),)
 CONFIG_MOUNT := -v $(CONFIG):/config.toml:ro
 endif
 
-IMAGE_TARGETS := vault-image nomad-server-image nomad-client-image
-QCOW2_TARGETS := vault-qcow2 nomad-server-qcow2 nomad-client-qcow2
-RAW_TARGETS := vault-raw nomad-server-raw nomad-client-raw
-AMI_TARGETS := vault-ami nomad-server-ami nomad-client-ami
+IMAGE_TARGETS := vault-image nomad-server-image nomad-client-image consul-server-image
+QCOW2_TARGETS := vault-qcow2 nomad-server-qcow2 nomad-client-qcow2 consul-server-qcow2
+RAW_TARGETS := vault-raw nomad-server-raw nomad-client-raw consul-server-raw
+AMI_TARGETS := vault-ami nomad-server-ami nomad-client-ami consul-server-ami
 DISK_TARGETS := $(QCOW2_TARGETS) $(RAW_TARGETS)
 
-.PHONY: vault nomad-server nomad-client $(IMAGE_TARGETS) $(DISK_TARGETS) $(AMI_TARGETS) help
+.PHONY: vault nomad-server nomad-client consul-server $(IMAGE_TARGETS) $(DISK_TARGETS) $(AMI_TARGETS) help
 
 vault: vault-image vault-qcow2
 nomad-server: nomad-server-image nomad-server-qcow2
 nomad-client: nomad-client-image nomad-client-qcow2
+consul-server: consul-server-image consul-server-qcow2
 
 # Map each component's public variables onto the shared recipes below.
 define COMPONENT
@@ -63,6 +70,7 @@ endef
 $(eval $(call COMPONENT,vault,VAULT))
 $(eval $(call COMPONENT,nomad-server,NOMAD_SERVER))
 $(eval $(call COMPONENT,nomad-client,NOMAD_CLIENT))
+$(eval $(call COMPONENT,consul-server,CONSUL_SERVER))
 
 $(IMAGE_TARGETS):
 	$(SUDO) $(PODMAN) build \
@@ -139,7 +147,10 @@ help:
 		'make nomad-server-ami' 'Build and upload the Nomad server AMI with bootc-image-builder' \
 		'make nomad-client' 'Build the Docker-enabled Nomad client image and QCOW2 disk' \
 		'make nomad-client-raw' 'Convert the existing Nomad client image to RAW' \
-		'make nomad-client-ami' 'Build and upload the Nomad client AMI with bootc-image-builder'
+		'make nomad-client-ami' 'Build and upload the Nomad client AMI with bootc-image-builder' \
+		'make consul-server' 'Build the Consul server image and QCOW2 disk' \
+		'make consul-server-raw' 'Convert the existing Consul server image to RAW' \
+		'make consul-server-ami' 'Build and upload the Consul server AMI with bootc-image-builder'
 	@echo
 	@echo "All settings can be overridden on the command line (for example, make vault-image SUDO=)."
 	@echo "Common: SUDO, PODMAN, AWS, TOFU, BUILDER_IMAGE, ROOTFS, OUTPUT_DIR, CONFIG"
@@ -148,3 +159,4 @@ help:
 	@echo "Vault: VAULT_IMAGE, VAULT_DIR, VAULT_QCOW2, VAULT_RAW, VAULT_AMI_NAME"
 	@echo "Nomad server: NOMAD_SERVER_IMAGE, NOMAD_SERVER_DIR, NOMAD_SERVER_QCOW2, NOMAD_SERVER_RAW, NOMAD_SERVER_AMI_NAME"
 	@echo "Nomad client: NOMAD_CLIENT_IMAGE, NOMAD_CLIENT_DIR, NOMAD_CLIENT_QCOW2, NOMAD_CLIENT_RAW, NOMAD_CLIENT_AMI_NAME"
+	@echo "Consul server: CONSUL_SERVER_IMAGE, CONSUL_SERVER_DIR, CONSUL_SERVER_QCOW2, CONSUL_SERVER_RAW, CONSUL_SERVER_AMI_NAME"
