@@ -15,25 +15,21 @@ AMI_TIMESTAMP ?= $(shell date -u +%Y%m%dT%H%M%SZ)
 VAULT_IMAGE ?= localhost/fedora-bootc-vault:latest
 VAULT_DIR ?= $(CURDIR)/images/vault
 VAULT_QCOW2 ?= $(OUTPUT_DIR)/vault.qcow2
-VAULT_RAW ?= $(OUTPUT_DIR)/vault.raw
 VAULT_AMI_NAME ?= vault
 
 NOMAD_SERVER_IMAGE ?= localhost/fedora-bootc-nomad-server:latest
 NOMAD_SERVER_DIR ?= $(CURDIR)/images/nomad-server
 NOMAD_SERVER_QCOW2 ?= $(OUTPUT_DIR)/nomad-server.qcow2
-NOMAD_SERVER_RAW ?= $(OUTPUT_DIR)/nomad-server.raw
 NOMAD_SERVER_AMI_NAME ?= nomad-server
 
 NOMAD_CLIENT_IMAGE ?= localhost/fedora-bootc-nomad-client:latest
 NOMAD_CLIENT_DIR ?= $(CURDIR)/images/nomad-client
 NOMAD_CLIENT_QCOW2 ?= $(OUTPUT_DIR)/nomad-client.qcow2
-NOMAD_CLIENT_RAW ?= $(OUTPUT_DIR)/nomad-client.raw
 NOMAD_CLIENT_AMI_NAME ?= nomad-client
 
 CONSUL_SERVER_IMAGE ?= localhost/fedora-bootc-consul-server:latest
 CONSUL_SERVER_DIR ?= $(CURDIR)/images/consul-server
 CONSUL_SERVER_QCOW2 ?= $(OUTPUT_DIR)/consul-server.qcow2
-CONSUL_SERVER_RAW ?= $(OUTPUT_DIR)/consul-server.raw
 CONSUL_SERVER_AMI_NAME ?= consul-server
 
 ifneq ($(wildcard $(CONFIG)),)
@@ -41,28 +37,16 @@ CONFIG_MOUNT := -v $(CONFIG):/config.toml:ro
 endif
 
 IMAGE_TARGETS := vault-image nomad-server-image nomad-client-image consul-server-image
-QCOW2_TARGETS := vault-qcow2 nomad-server-qcow2 nomad-client-qcow2 consul-server-qcow2
-RAW_TARGETS := vault-raw nomad-server-raw nomad-client-raw consul-server-raw
 AMI_TARGETS := vault-ami nomad-server-ami nomad-client-ami consul-server-ami
-DISK_TARGETS := $(QCOW2_TARGETS) $(RAW_TARGETS)
 
-.PHONY: vault nomad-server nomad-client consul-server $(IMAGE_TARGETS) $(DISK_TARGETS) $(AMI_TARGETS) help
+.PHONY: $(IMAGE_TARGETS) $(AMI_TARGETS) help
 
-vault: vault-image vault-qcow2
-nomad-server: nomad-server-image nomad-server-qcow2
-nomad-client: nomad-client-image nomad-client-qcow2
-consul-server: consul-server-image consul-server-qcow2
-
-# Map each component's public variables onto the shared recipes below.
+# Map each component's settings onto the shared image and AMI recipes.
 define COMPONENT
-$(1)-image $(1)-qcow2 $(1)-raw $(1)-ami: BUILD_IMAGE := $($(2)_IMAGE)
+$(1)-image $(1)-ami: BUILD_IMAGE := $($(2)_IMAGE)
 $(1)-image: IMAGE_DIR := $($(2)_DIR)
-$(1)-qcow2: DISK_TYPE := qcow2
-$(1)-qcow2: ARTIFACT_SOURCE := $(OUTPUT_DIR)/qcow2/disk.qcow2
-$(1)-qcow2: DISK_OUTPUT := $($(2)_QCOW2)
-$(1)-raw: DISK_TYPE := raw
-$(1)-raw: ARTIFACT_SOURCE := $(OUTPUT_DIR)/image/disk.raw
-$(1)-raw: DISK_OUTPUT := $($(2)_RAW)
+$(1)-image: ARTIFACT_SOURCE := $(OUTPUT_DIR)/qcow2/disk.qcow2
+$(1)-image: DISK_OUTPUT := $($(2)_QCOW2)
 $(1)-ami: AMI_NAME := $($(2)_AMI_NAME)$(if $(AMI_TIMESTAMP),-$(AMI_TIMESTAMP))
 $(1)-ami: $(1)-image
 endef
@@ -77,8 +61,6 @@ $(IMAGE_TARGETS):
 		-t $(BUILD_IMAGE) \
 		-f $(IMAGE_DIR)/Containerfile \
 		$(IMAGE_DIR)
-
-$(DISK_TARGETS):
 	@mkdir -p $(OUTPUT_DIR)
 	@if test ! -f "$(CONFIG)"; then \
 		echo "Warning: $(CONFIG) not found; no login user will be injected."; \
@@ -91,12 +73,12 @@ $(DISK_TARGETS):
 		-v $(OUTPUT_DIR):/output \
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		$(BUILDER_IMAGE) \
-		--type $(DISK_TYPE) \
+		--type qcow2 \
 		--rootfs $(ROOTFS) \
 		$(BUILD_IMAGE)
 	$(SUDO) mv -f $(ARTIFACT_SOURCE) $(DISK_OUTPUT)
 	$(SUDO) chown -R $$(id -u):$$(id -g) $(OUTPUT_DIR)
-	@echo "$(DISK_TYPE) disk created at $(DISK_OUTPUT)"
+	@echo "QCOW2 disk created at $(DISK_OUTPUT)"
 
 $(AMI_TARGETS):
 	@set -eu; \
@@ -137,26 +119,20 @@ $(AMI_TARGETS):
 
 help:
 	@printf '%-25s %s\n' \
-		'make vault-image' 'Build only the Vault bootc container image' \
-		'make vault-qcow2' 'Convert the existing Vault image to QCOW2' \
-		'make vault-raw' 'Convert the existing Vault image to RAW' \
-		'make vault-ami' 'Build and upload the Vault AMI with bootc-image-builder' \
-		'make vault' 'Build the Vault bootc image and QCOW2 disk' \
-		'make nomad-server' 'Build the Nomad server image and QCOW2 disk' \
-		'make nomad-server-raw' 'Convert the existing Nomad server image to RAW' \
-		'make nomad-server-ami' 'Build and upload the Nomad server AMI with bootc-image-builder' \
-		'make nomad-client' 'Build the Docker-enabled Nomad client image and QCOW2 disk' \
-		'make nomad-client-raw' 'Convert the existing Nomad client image to RAW' \
-		'make nomad-client-ami' 'Build and upload the Nomad client AMI with bootc-image-builder' \
-		'make consul-server' 'Build the Consul server image and QCOW2 disk' \
-		'make consul-server-raw' 'Convert the existing Consul server image to RAW' \
-		'make consul-server-ami' 'Build and upload the Consul server AMI with bootc-image-builder'
+		'make vault-image' 'Build the Vault image and QCOW2 disk' \
+		'make vault-ami' 'Build and upload the Vault AMI' \
+		'make nomad-server-image' 'Build the Nomad server image and QCOW2 disk' \
+		'make nomad-server-ami' 'Build and upload the Nomad server AMI' \
+		'make nomad-client-image' 'Build the Nomad client image and QCOW2 disk' \
+		'make nomad-client-ami' 'Build and upload the Nomad client AMI' \
+		'make consul-server-image' 'Build the Consul server image and QCOW2 disk' \
+		'make consul-server-ami' 'Build and upload the Consul server AMI'
 	@echo
 	@echo "All settings can be overridden on the command line (for example, make vault-image SUDO=)."
 	@echo "Common: SUDO, PODMAN, AWS, TOFU, BUILDER_IMAGE, ROOTFS, OUTPUT_DIR, CONFIG"
 	@echo "AWS: TF_BASE_DIR, S3_BUCKET, AWS_REGION, AMI_TIMESTAMP"
 	@echo "AMI targets use bootc-image-builder's native AWS uploader; the bucket is used for intermediate storage."
-	@echo "Vault: VAULT_IMAGE, VAULT_DIR, VAULT_QCOW2, VAULT_RAW, VAULT_AMI_NAME"
-	@echo "Nomad server: NOMAD_SERVER_IMAGE, NOMAD_SERVER_DIR, NOMAD_SERVER_QCOW2, NOMAD_SERVER_RAW, NOMAD_SERVER_AMI_NAME"
-	@echo "Nomad client: NOMAD_CLIENT_IMAGE, NOMAD_CLIENT_DIR, NOMAD_CLIENT_QCOW2, NOMAD_CLIENT_RAW, NOMAD_CLIENT_AMI_NAME"
-	@echo "Consul server: CONSUL_SERVER_IMAGE, CONSUL_SERVER_DIR, CONSUL_SERVER_QCOW2, CONSUL_SERVER_RAW, CONSUL_SERVER_AMI_NAME"
+	@echo "Vault: VAULT_IMAGE, VAULT_DIR, VAULT_QCOW2, VAULT_AMI_NAME"
+	@echo "Nomad server: NOMAD_SERVER_IMAGE, NOMAD_SERVER_DIR, NOMAD_SERVER_QCOW2, NOMAD_SERVER_AMI_NAME"
+	@echo "Nomad client: NOMAD_CLIENT_IMAGE, NOMAD_CLIENT_DIR, NOMAD_CLIENT_QCOW2, NOMAD_CLIENT_AMI_NAME"
+	@echo "Consul server: CONSUL_SERVER_IMAGE, CONSUL_SERVER_DIR, CONSUL_SERVER_QCOW2, CONSUL_SERVER_AMI_NAME"
