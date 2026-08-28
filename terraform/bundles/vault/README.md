@@ -21,9 +21,8 @@ tofu apply \
   -var='ssh_public_key=ssh-rsa AAAA...'
 ~~~
 
-The bundle selects the newest matching AMI automatically. Override
-`ami_name_pattern` when using a different naming prefix. The default instance
-type is `t3.micro` and the root disk is 20 GiB.
+The bundle selects the newest self-owned `vault-*` AMI automatically. The
+default instance type is `t3.micro` and the root disk is 20 GiB.
 
 `username` and `ssh_public_key` are installed through cloud-init. User data is
 stored in Terraform state, so protect the state file. Because the instance is

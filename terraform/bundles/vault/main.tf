@@ -16,7 +16,7 @@ data "aws_ami" "vault" {
 
   filter {
     name   = "name"
-    values = [var.ami_name_pattern]
+    values = ["vault-*"]
   }
 
   filter {

@@ -4,17 +4,6 @@ variable "base_state_path" {
   default     = "../base/terraform.tfstate"
 }
 
-variable "ami_name_pattern" {
-  description = "AMI name pattern used to find the newest self-owned Vault AMI."
-  type        = string
-  default     = "vault-*"
-
-  validation {
-    condition     = trimspace(var.ami_name_pattern) != ""
-    error_message = "ami_name_pattern must not be empty."
-  }
-}
-
 variable "name" {
   description = "Name tag for the Vault instance and root disk."
   type        = string
