@@ -13,3 +13,12 @@ output "bucket_region" {
   value       = aws_s3_bucket.this.region
 }
 
+output "vmimport_role_name" {
+  description = "Name of the VM Import/Export service role."
+  value       = aws_iam_role.vmimport.name
+}
+
+output "vmimport_role_arn" {
+  description = "ARN of the VM Import/Export service role."
+  value       = aws_iam_role.vmimport.arn
+}

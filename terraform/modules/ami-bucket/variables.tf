@@ -3,6 +3,17 @@ variable "bucket_name" {
   type        = string
 }
 
+variable "vmimport_role_name" {
+  description = "Name of the IAM service role used by EC2 VM Import/Export."
+  type        = string
+  default     = "vmimport"
+
+  validation {
+    condition     = trimspace(var.vmimport_role_name) != ""
+    error_message = "vmimport_role_name must not be empty."
+  }
+}
+
 variable "tags" {
   description = "Additional tags to apply to the bucket."
   type        = map(string)
