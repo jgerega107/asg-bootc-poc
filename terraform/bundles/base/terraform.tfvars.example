@@ -1,0 +1,3 @@
+# Core VPC and image bucket names.
+vpc_name    = "test-bootc"
+bucket_name = "bootc-images"

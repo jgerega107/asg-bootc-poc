@@ -10,7 +10,7 @@ CONFIG ?= $(CURDIR)/config.toml
 TF_BASE_DIR ?= $(CURDIR)/terraform/bundles/base
 S3_BUCKET ?= $(shell $(TOFU) -chdir=$(TF_BASE_DIR) output -raw bootc_images_bucket_id 2>/dev/null)
 AWS_REGION ?= $(or $(AWS_DEFAULT_REGION),$(shell $(AWS) configure get region 2>/dev/null))
-AMI_DATE ?= $(shell date +%Y%m%d)
+AMI_TIMESTAMP ?= $(shell date -u +%Y%m%dT%H%M%SZ)
 
 VAULT_IMAGE ?= localhost/fedora-bootc-vault:latest
 VAULT_DIR ?= $(CURDIR)/images/vault
@@ -56,7 +56,7 @@ $(1)-qcow2: DISK_OUTPUT := $($(2)_QCOW2)
 $(1)-raw: DISK_TYPE := raw
 $(1)-raw: ARTIFACT_SOURCE := $(OUTPUT_DIR)/image/disk.raw
 $(1)-raw: DISK_OUTPUT := $($(2)_RAW)
-$(1)-ami: AMI_NAME := $($(2)_AMI_NAME)$(if $(AMI_DATE),-$(AMI_DATE))
+$(1)-ami: AMI_NAME := $($(2)_AMI_NAME)$(if $(AMI_TIMESTAMP),-$(AMI_TIMESTAMP))
 $(1)-ami: $(1)-image
 endef
 
@@ -143,7 +143,7 @@ help:
 	@echo
 	@echo "All settings can be overridden on the command line (for example, make vault-image SUDO=)."
 	@echo "Common: SUDO, PODMAN, AWS, TOFU, BUILDER_IMAGE, ROOTFS, OUTPUT_DIR, CONFIG"
-	@echo "AWS: TF_BASE_DIR, S3_BUCKET, AWS_REGION, AMI_DATE"
+	@echo "AWS: TF_BASE_DIR, S3_BUCKET, AWS_REGION, AMI_TIMESTAMP"
 	@echo "AMI targets use bootc-image-builder's native AWS uploader; the bucket is used for intermediate storage."
 	@echo "Vault: VAULT_IMAGE, VAULT_DIR, VAULT_QCOW2, VAULT_RAW, VAULT_AMI_NAME"
 	@echo "Nomad server: NOMAD_SERVER_IMAGE, NOMAD_SERVER_DIR, NOMAD_SERVER_QCOW2, NOMAD_SERVER_RAW, NOMAD_SERVER_AMI_NAME"

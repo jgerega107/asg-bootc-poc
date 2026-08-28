@@ -11,8 +11,9 @@ DNS name. It exposes Nomad's HTTP API on port 4646. The target group checks the
 Nomad agent health API at `/v1/agent/health`; the Auto Scaling Group uses that
 load balancer check for instance health. RPC and Serf LAN traffic remains
 private between server instances. The default endpoint rules allow the VPC and Tailscale's
-standard `100.64.0.0/10` range; override `endpoint_cidr_blocks` for another
-tailnet range.
+standard `100.64.0.0/10` range when the local `terraform.tfvars` is present;
+override `endpoint_cidr_blocks` for another tailnet range. Without that
+override, only the VPC CIDR is allowed.
 
 Cloud-init writes `/etc/nomad.d/90-runtime.hcl` with an AWS `server_join`
 cloud-auto-join expression matching the instances' `Name` tag. This lets

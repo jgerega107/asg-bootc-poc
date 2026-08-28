@@ -1,0 +1,5 @@
+# Generate a dedicated Tailscale auth key and replace this placeholder.
+tailscale_auth_key = "tskey-auth-REPLACE_ME"
+
+username       = "user"
+ssh_public_key = "ssh-ed25519 AAAA... replace-with-your-public-key"

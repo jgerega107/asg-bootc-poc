@@ -67,7 +67,7 @@ variable "vpc_security_group_ids" {
 variable "endpoint_cidr_blocks" {
   description = "Additional CIDR blocks allowed to reach the private Nomad endpoint. The VPC CIDR is always allowed."
   type        = list(string)
-  default     = ["100.64.0.0/10"]
+  default     = []
 
   validation {
     condition     = alltrue([for cidr in var.endpoint_cidr_blocks : can(cidrhost(cidr, 0))])
