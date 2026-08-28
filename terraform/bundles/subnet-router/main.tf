@@ -31,6 +31,13 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+locals {
+  advertised_routes = [
+    data.terraform_remote_state.base.outputs.private_subnet_cidr,
+    "${data.terraform_remote_state.base.outputs.vpc_dns_resolver_ip}/32",
+  ]
+}
+
 resource "aws_security_group" "tailscale_router" {
   name        = "${var.name}-sg"
   description = "Tailscale subnet router"
@@ -71,8 +78,7 @@ module "subnet_router" {
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     auth_arg       = "--auth-key=${var.tailscale_auth_key}"
-    route_arg      = "--advertise-routes=${data.terraform_remote_state.base.outputs.private_subnet_cidr}"
-    hostname_arg   = "--hostname=${var.name}"
+    route_arg      = "--advertise-routes=${join(",", local.advertised_routes)}"
     username       = var.username
     ssh_public_key = var.ssh_public_key
   })

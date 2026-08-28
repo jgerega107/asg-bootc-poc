@@ -20,4 +20,4 @@ write_files:
 runcmd:
   - [sysctl, --system]
   - [sh, -c, "curl -fsSL https://tailscale.com/install.sh | sh"]
-  - [tailscale, up, ${jsonencode(auth_arg)}, ${jsonencode(route_arg)}, --accept-dns=false, ${jsonencode(hostname_arg)}]
+  - [tailscale, up, ${jsonencode(auth_arg)}, ${jsonencode(route_arg)}, --accept-dns=false]

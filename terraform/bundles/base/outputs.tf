@@ -18,6 +18,11 @@ output "private_subnet_cidr" {
   value       = module.vpc.private_subnet_cidr
 }
 
+output "vpc_dns_resolver_ip" {
+  description = "IPv4 address of the Amazon-provided Route 53 Resolver for the VPC."
+  value       = cidrhost(module.vpc.vpc_cidr, 2)
+}
+
 output "private_route_table_id" {
   description = "ID of the route table to use when routing through the VPN instance."
   value       = module.vpc.private_route_table_id

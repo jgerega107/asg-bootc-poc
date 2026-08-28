@@ -35,10 +35,36 @@ The default router uses the latest Ubuntu 24.04 AMD64 AMI and a t3.micro
 instance. Override instance_type, root_disk_size, or the Ubuntu AMI filters
 when needed.
 
-The router enables IP forwarding, advertises the base bundle's private subnet,
-and disables EC2 source/destination checking. Approve the advertised route in
-the Tailscale admin console. Linux tailnet clients may also need to enable
-route acceptance.
+The router enables IP forwarding, advertises the base bundle's private subnet
+and the VPC's Amazon-provided DNS resolver (`VPC CIDR + 2` as a `/32`), and
+disables EC2 source/destination checking. No `--hostname` is supplied to
+Tailscale, so it uses the AWS/OS hostname and Tailscale generates the machine
+name (and corresponding MagicDNS record) automatically. MagicDNS must be
+enabled for the tailnet; `--accept-dns=false` only prevents this router from
+rewriting its own resolver configuration.
+
+Advertised routes require approval unless the tailnet policy grants automatic
+approval. For example, create a tagged auth key for `tag:subnet-router` and
+add the private subnet CIDR to the tailnet policy:
+
+~~~json
+{
+  "tagOwners": {
+    "tag:subnet-router": ["autogroup:admin"]
+  },
+  "autoApprovers": {
+    "routes": {
+      "10.0.1.0/24": ["tag:subnet-router"],
+      "10.0.0.2/32": ["tag:subnet-router"]
+    }
+  }
+}
+~~~
+
+Replace the example CIDRs with the actual private subnet and VPC resolver
+addresses if they differ. With this policy, both advertised routes are
+approved automatically; otherwise, approve them in the Tailscale admin
+console. Linux tailnet clients may also need to enable route acceptance.
 
 Private workload security groups must allow the router's security group as an
 inbound source for the application ports that should be reachable over

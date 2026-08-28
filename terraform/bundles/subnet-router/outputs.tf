@@ -22,3 +22,13 @@ output "advertised_route" {
   description = "Private subnet CIDR advertised to Tailscale."
   value       = data.terraform_remote_state.base.outputs.private_subnet_cidr
 }
+
+output "advertised_routes" {
+  description = "CIDR routes advertised to Tailscale, including the VPC DNS resolver."
+  value       = local.advertised_routes
+}
+
+output "vpc_dns_resolver_ip" {
+  description = "IPv4 address of the Amazon-provided Route 53 Resolver advertised to Tailscale."
+  value       = data.terraform_remote_state.base.outputs.vpc_dns_resolver_ip
+}
