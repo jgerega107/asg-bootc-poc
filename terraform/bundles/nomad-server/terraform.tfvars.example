@@ -1,7 +1,4 @@
 username       = "user"
 ssh_public_key = "ssh-ed25519 AAAA... replace-with-your-public-key"
 
-# Extra CIDR (like Tailscale)
-endpoint_cidr_blocks = ["100.64.0.0/10"]
-
 max_size = 1

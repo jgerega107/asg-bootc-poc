@@ -3,26 +3,24 @@
 Creates a Nomad server Auto Scaling Group in the base bundle's private subnet,
 using the newest self-owned `nomad-server-*` AMI. Instances
 have no public IPv4 address. SSH is allowed from the base bundle's public
-subnet, and the instance role grants the read-only EC2 permissions Nomad needs
-for AWS cloud auto-join.
+subnet, and the instance role grants the read-only EC2 permissions Nomad and
+the embedded Consul client need for AWS cloud auto-join.
 
-The bundle also creates an internal Network Load Balancer with a stable private
-DNS name. It exposes Nomad's HTTP API on port 4646. The target group checks the
-Nomad agent health API at `/v1/agent/health`; the Auto Scaling Group uses that
-load balancer check for instance health. RPC and Serf LAN traffic remains
-private between server instances. The default endpoint rules allow the VPC and Tailscale's
-standard `100.64.0.0/10` range when the local `terraform.tfvars` is present;
-override `endpoint_cidr_blocks` for another tailnet range. Without that
-override, only the VPC CIDR is allowed.
+Nomad's HTTP API, RPC, and Serf LAN ports are reachable only from the private
+subnet and between Nomad servers. Nomad's Consul integration advertises the
+server service and performs health checks, so clients can discover healthy
+servers through the local Consul agent without a load balancer.
 
-Cloud-init writes `/etc/nomad.d/90-runtime.hcl` with an AWS `server_join`
-cloud-auto-join expression matching the instances' `Name` tag. This lets
+Cloud-init writes `/etc/nomad.d/90-runtime.hcl` with the Nomad `server_join`
+stanza and an AWS cloud-auto-join expression matching the instances' `Name`
+tag. This lets
 servers discover each other through EC2 instead of depending on ephemeral
-private addresses. The instance image's `bootstrap_expect` still controls the
-cluster size; the default one-instance ASG is intended for a single-node
-development cluster.
+private addresses. It also writes a Consul AWS cloud-auto-join expression whose
+tag name is read from the Consul-server bundle's local Terraform state. The
+instance image's `bootstrap_expect` still controls the cluster size; the
+default one-instance ASG is intended for a single-node development cluster.
 
-Apply the base bundle first and create a Nomad server AMI with
+Apply the base and Consul-server bundles first and create a Nomad server AMI with
 `make nomad-server-ami`, then apply this bundle:
 
 ~~~sh

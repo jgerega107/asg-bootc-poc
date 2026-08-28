@@ -5,7 +5,7 @@ variable "base_state_path" {
 }
 
 variable "name" {
-  description = "Name for the Nomad server ASG, instances, endpoint, and IAM resources."
+  description = "Name for the Nomad server ASG, instances, and IAM resources."
   type        = string
   default     = "nomad-server"
 
@@ -64,28 +64,6 @@ variable "vpc_security_group_ids" {
   default     = []
 }
 
-variable "endpoint_cidr_blocks" {
-  description = "Additional CIDR blocks allowed to reach the private Nomad endpoint. The VPC CIDR is always allowed."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition     = alltrue([for cidr in var.endpoint_cidr_blocks : can(cidrhost(cidr, 0))])
-    error_message = "endpoint_cidr_blocks must contain valid CIDR blocks."
-  }
-}
-
-variable "health_check_path" {
-  description = "Nomad HTTP API path used by the endpoint target group health check."
-  type        = string
-  default     = "/v1/agent/health"
-
-  validation {
-    condition     = startswith(var.health_check_path, "/")
-    error_message = "health_check_path must start with '/'."
-  }
-}
-
 variable "min_size" {
   description = "Minimum number of Nomad server instances in the Auto Scaling Group."
   type        = number
@@ -120,7 +98,7 @@ variable "max_size" {
 }
 
 variable "health_check_grace_period" {
-  description = "Seconds to wait after launch before the Auto Scaling Group checks load balancer health."
+  description = "Seconds to wait after launch before the Auto Scaling Group checks instance health."
   type        = number
   default     = 300
 

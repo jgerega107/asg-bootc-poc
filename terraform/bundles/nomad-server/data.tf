@@ -7,6 +7,14 @@ data "terraform_remote_state" "base" {
   }
 }
 
+data "terraform_remote_state" "consul_server" {
+  backend = "local"
+
+  config = {
+    path = "../consul-server/terraform.tfstate"
+  }
+}
+
 data "aws_region" "current" {}
 
 data "aws_vpc" "base" {
@@ -40,11 +48,4 @@ data "aws_ami" "nomad_server" {
     name   = "state"
     values = ["available"]
   }
-}
-
-locals {
-  endpoint_cidr_blocks = concat(
-    [data.aws_vpc.base.cidr_block],
-    var.endpoint_cidr_blocks,
-  )
 }

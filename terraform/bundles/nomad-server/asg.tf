@@ -13,19 +13,43 @@ resource "aws_security_group" "nomad_server" {
   }
 
   ingress {
-    description     = "Nomad TCP traffic from the internal load balancer"
-    protocol        = "tcp"
-    from_port       = 4646
-    to_port         = 4646
-    security_groups = [aws_security_group.nomad_nlb.id]
-  }
-
-  ingress {
     description = "Nomad TCP traffic between servers"
     protocol    = "tcp"
     from_port   = 4646
     to_port     = 4648
     self        = true
+  }
+
+  ingress {
+    description = "Nomad HTTP API traffic from private clients"
+    protocol    = "tcp"
+    from_port   = 4646
+    to_port     = 4646
+    cidr_blocks = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
+  }
+
+  ingress {
+    description = "Nomad RPC traffic from private clients"
+    protocol    = "tcp"
+    from_port   = 4647
+    to_port     = 4647
+    cidr_blocks = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
+  }
+
+  ingress {
+    description = "Nomad Serf LAN traffic from private clients"
+    protocol    = "tcp"
+    from_port   = 4648
+    to_port     = 4648
+    cidr_blocks = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
+  }
+
+  ingress {
+    description = "Nomad Serf LAN traffic from private clients"
+    protocol    = "udp"
+    from_port   = 4648
+    to_port     = 4648
+    cidr_blocks = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
   }
 
   ingress {
@@ -66,15 +90,15 @@ module "nomad_server" {
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     username       = var.username
     ssh_public_key = var.ssh_public_key
-    server_join    = "provider=aws tag_key=Name tag_value=${var.name} region=${data.aws_region.current.region}"
+    nomad_join     = "provider=aws tag_key=Name tag_value=${var.name} region=${data.aws_region.current.region}"
+    consul_join    = "provider=aws tag_key=Name tag_value=${data.terraform_remote_state.consul_server.outputs.name} region=${data.aws_region.current.region}"
   })
 
   min_size                  = var.min_size
   desired_capacity          = var.desired_capacity
   max_size                  = var.max_size
-  health_check_type         = "ELB"
+  health_check_type         = "EC2"
   health_check_grace_period = var.health_check_grace_period
-  target_group_arns         = [aws_lb_target_group.nomad.arn]
   instance_refresh_enabled  = var.instance_refresh_enabled
 
   tags = merge(var.tags, {
