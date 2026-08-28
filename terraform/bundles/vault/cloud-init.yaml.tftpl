@@ -6,3 +6,10 @@ users:
       - ${jsonencode(ssh_public_key)}
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     shell: /bin/bash
+
+write_files:
+  - path: /etc/consul.d/90-runtime.hcl
+    owner: root:consul
+    permissions: "0640"
+    content: |
+      retry_join = [${jsonencode(consul_join)}]

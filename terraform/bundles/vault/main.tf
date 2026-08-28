@@ -6,6 +6,16 @@ data "terraform_remote_state" "base" {
   }
 }
 
+data "terraform_remote_state" "consul_server" {
+  backend = "local"
+
+  config = {
+    path = "../consul-server/terraform.tfstate"
+  }
+}
+
+data "aws_region" "current" {}
+
 data "aws_subnet" "public" {
   id = data.terraform_remote_state.base.outputs.public_subnet_id
 }
@@ -49,11 +59,14 @@ resource "aws_security_group" "vault" {
   }
 
   ingress {
-    description = "Vault UI from the public subnet"
+    description = "Vault API from the public and private subnets"
     protocol    = "tcp"
     from_port   = 8200
     to_port     = 8200
-    cidr_blocks = [data.aws_subnet.public.cidr_block]
+    cidr_blocks = [
+      data.aws_subnet.public.cidr_block,
+      data.terraform_remote_state.base.outputs.private_subnet_cidr,
+    ]
   }
 
   egress {
@@ -83,6 +96,7 @@ module "vault" {
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
     username       = var.username
     ssh_public_key = var.ssh_public_key
+    consul_join    = "provider=aws tag_key=Name tag_value=${data.terraform_remote_state.consul_server.outputs.name} region=${data.aws_region.current.region}"
   })
 
   tags = merge(var.tags, {

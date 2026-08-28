@@ -7,7 +7,8 @@ allows SSH only from the base bundle's public subnet, so the instance can be
 reached through the subnet router without exposing SSH to the internet.
 
 Apply the base bundle first so its local state contains the VPC and subnet
-outputs, then create or import a Vault AMI with `make vault-ami`:
+outputs, apply the Consul-server bundle, then create or import a Vault AMI with
+`make vault-ami`:
 
 ~~~sh
 cd terraform/bundles/base
@@ -24,9 +25,13 @@ tofu apply \
 The bundle selects the newest self-owned `vault-*` AMI automatically. The
 default instance type is `t3.micro` and the root disk is 20 GiB.
 
-`username` and `ssh_public_key` are installed through cloud-init. User data is
-stored in Terraform state, so protect the state file. Because the instance is
-stored in Terraform state, so protect the state file. Because the instance is
-private, access requires a path through the subnet router or another private
-connection. The bundle always attaches its SSH security group; pass
-`vpc_security_group_ids` to attach additional security groups.
+`username` and `ssh_public_key` are installed through cloud-init. Cloud-init
+also configures the embedded Consul client to join the Consul server instances
+through AWS cloud auto-join; the server tag name is read from the Consul-server
+bundle's local Terraform state. The shared VM module creates a read-only EC2
+discovery role (`ec2:DescribeInstances` and `ec2:DescribeRegions`) and attaches
+its instance profile for that lookup. User data is stored in Terraform state,
+so protect the state file. Because the instance is private, access requires a
+path through the subnet router or another private connection. The bundle always
+attaches its SSH security group; pass `vpc_security_group_ids` to attach
+additional security groups.
