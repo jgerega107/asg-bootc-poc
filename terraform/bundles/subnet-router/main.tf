@@ -32,10 +32,7 @@ data "aws_ami" "ubuntu" {
 }
 
 locals {
-  advertised_routes = [
-    data.terraform_remote_state.base.outputs.private_subnet_cidr,
-    "${data.terraform_remote_state.base.outputs.vpc_dns_resolver_ip}/32",
-  ]
+  advertised_routes = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
 }
 
 resource "aws_security_group" "tailscale_router" {

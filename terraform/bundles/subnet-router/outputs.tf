@@ -9,7 +9,7 @@ output "private_ip" {
 }
 
 output "public_ip" {
-  description = "Public IPv4 address of the subnet router."
+  description = "Ephemeral public IPv4 address of the subnet router."
   value       = module.subnet_router.public_ip
 }
 
@@ -24,11 +24,6 @@ output "advertised_route" {
 }
 
 output "advertised_routes" {
-  description = "CIDR routes advertised to Tailscale, including the VPC DNS resolver."
+  description = "CIDR routes advertised to Tailscale."
   value       = local.advertised_routes
-}
-
-output "vpc_dns_resolver_ip" {
-  description = "IPv4 address of the Amazon-provided Route 53 Resolver advertised to Tailscale."
-  value       = data.terraform_remote_state.base.outputs.vpc_dns_resolver_ip
 }

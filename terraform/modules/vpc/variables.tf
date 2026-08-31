@@ -11,7 +11,7 @@ variable "vpc_cidr" {
 }
 
 variable "public_subnet_cidr" {
-  description = "IPv4 CIDR block for the public NAT Gateway subnet."
+  description = "IPv4 CIDR block for the public NAT Gateway and Tailscale router subnet."
   type        = string
   default     = "10.0.0.0/24"
 }

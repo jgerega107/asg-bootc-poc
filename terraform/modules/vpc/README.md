@@ -1,8 +1,8 @@
 # VPC
 
 Creates a single-AZ VPC with one private application subnet and one shared NAT
-Gateway. The public subnet exists only to provide internet connectivity for the
-NAT Gateway.
+Gateway. The public subnet hosts the NAT Gateway and the Tailscale subnet
+router; other application workloads remain private.
 
 ```hcl
 module "vpc" {
@@ -13,7 +13,8 @@ module "vpc" {
 ```
 
 The public subnet has a route to the Internet Gateway and contains the NAT
-Gateway. No application workloads are placed in this subnet.
+Gateway. The Tailscale router may also be placed there when direct inbound
+Tailscale UDP is required.
 
 The private subnet has a default route through the shared NAT Gateway for
 outbound internet access and remains unreachable from the public internet.

@@ -14,7 +14,7 @@ output "availability_zone" {
 }
 
 output "public_subnet_id" {
-  description = "ID of the public subnet containing the NAT Gateway."
+  description = "ID of the public subnet containing the NAT Gateway and Tailscale router."
   value       = aws_subnet.public.id
 }
 
