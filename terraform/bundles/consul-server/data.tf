@@ -7,18 +7,14 @@ data "terraform_remote_state" "base" {
   }
 }
 
-data "terraform_remote_state" "subnet_router" {
-  backend = "local"
-
-  config = {
-    path = "../subnet-router/terraform.tfstate"
-  }
-}
-
 data "aws_region" "current" {}
 
 data "aws_vpc" "base" {
   id = data.terraform_remote_state.base.outputs.vpc_id
+}
+
+data "aws_subnet" "public" {
+  id = data.terraform_remote_state.base.outputs.public_subnet_id
 }
 
 data "aws_ami" "consul_server" {

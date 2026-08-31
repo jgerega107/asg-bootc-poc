@@ -2,7 +2,7 @@
 
 Creates a Consul server Auto Scaling Group in the base bundle's private subnet,
 using the newest self-owned `consul-server-*` AMI. Instances have no public
-IPv4 address. Its security group allows all traffic from the subnet router,
+IPv4 address. Its security group allows all traffic from the public subnet,
 while Consul's server RPC, LAN gossip, WAN gossip, and DNS ports remain private
 from other sources.
 
@@ -16,7 +16,7 @@ with an AWS `retry_join` expression matching the instances' `Name` tag. The
 it at one for a single-node development cluster and use an odd value for a
 multi-server Consul cluster.
 
-Apply the base and subnet-router bundles first and create a Consul server AMI with
+Apply the base bundle first and create a Consul server AMI with
 `make consul-server-ami`, then apply this bundle before applying the Nomad or
 Vault bundles. Those bundles read this bundle's `name` output from local state
 to build their own Consul AWS cloud-auto-join expression:

@@ -2,6 +2,9 @@
 package_update: true
 packages:
   - curl
+  - ca-certificates
+  - unzip
+  - systemd-resolved
 
 users:
   - name: ${jsonencode(username)}
@@ -11,6 +14,75 @@ users:
     shell: /bin/bash
 
 write_files:
+  - path: /etc/consul.d/consul.hcl
+    permissions: "0640"
+    content: |
+      datacenter         = "dc1"
+      data_dir           = "/var/lib/consul"
+      server             = false
+      bind_addr          = "{{ GetPrivateIP }}"
+      advertise_addr     = "{{ GetPrivateIP }}"
+      client_addr        = "127.0.0.1"
+      retry_join         = [${jsonencode(consul_join)}]
+      leave_on_terminate = true
+
+      ports {
+        dns = 8600
+      }
+
+  - path: /etc/systemd/system/consul.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=HashiCorp Consul client
+      Documentation=https://developer.hashicorp.com/consul/docs
+      Requires=network-online.target
+      After=network-online.target
+      ConditionFileNotEmpty=/etc/consul.d/consul.hcl
+
+      [Service]
+      Type=notify
+      User=consul
+      Group=consul
+      ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+      ExecReload=/bin/kill --signal HUP $MAINPID
+      KillMode=process
+      KillSignal=SIGTERM
+      Restart=on-failure
+      LimitNOFILE=65536
+      StateDirectory=consul
+      StateDirectoryMode=0750
+      UMask=0027
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/resolved.conf.d/consul.conf
+    permissions: "0644"
+    content: |
+      [Resolve]
+      DNS=127.0.0.1:8600
+      DNSSEC=false
+      Domains=~service.consul
+      DNSStubListenerExtra=0.0.0.0:53
+
+  - path: /usr/local/sbin/install-consul
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      set -eu
+
+      temp_dir=$(mktemp -d)
+      trap 'rm -rf "$temp_dir"' EXIT
+      archive="$temp_dir/consul.zip"
+
+      curl --fail --silent --show-error --location \
+        --output "$archive" \
+        "https://releases.hashicorp.com/consul/${consul_version}/consul_${consul_version}_linux_amd64.zip"
+      printf '%s  %s\n' '${consul_sha256}' "$archive" | sha256sum -c -
+      unzip -q "$archive" -d "$temp_dir"
+      install -m 0755 "$temp_dir/consul" /usr/local/bin/consul
+
   - path: /etc/sysctl.d/99-tailscale-router.conf
     permissions: "0644"
     content: |
@@ -19,5 +91,15 @@ write_files:
 
 runcmd:
   - [sysctl, --system]
+  - [useradd, --system, --user-group, --home-dir, /var/lib/consul, --create-home, --shell, /usr/sbin/nologin, consul]
+  - [install, -d, -m, "0750", /etc/consul.d]
+  - [sh, /usr/local/sbin/install-consul]
+  - [chown, -R, root:consul, /etc/consul.d]
+  - [consul, validate, /etc/consul.d]
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, consul.service]
+  - [systemctl, enable, --now, systemd-resolved.service]
+  - [ln, -sfn, /run/systemd/resolve/stub-resolv.conf, /etc/resolv.conf]
+  - [systemctl, restart, systemd-resolved.service]
   - [sh, -c, "curl -fsSL https://tailscale.com/install.sh | sh"]
   - [tailscale, up, ${jsonencode(auth_arg)}, ${jsonencode(route_arg)}, --accept-dns=false]

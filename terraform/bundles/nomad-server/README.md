@@ -3,7 +3,7 @@
 Creates a Nomad server Auto Scaling Group in the base bundle's private subnet,
 using the newest self-owned `nomad-server-*` AMI. Instances
 have no public IPv4 address. Its security group allows all traffic from the
-subnet router, and the instance role grants the read-only EC2
+public subnet, and the instance role grants the read-only EC2
 permissions Nomad and the embedded Consul client need for AWS cloud auto-join.
 
 Nomad's HTTP API, RPC, and Serf LAN ports are reachable only from the private
@@ -20,7 +20,7 @@ tag name is read from the Consul-server bundle's local Terraform state. The
 instance image's `bootstrap_expect` still controls the cluster size; the
 default one-instance ASG is intended for a single-node development cluster.
 
-Apply the base, subnet-router, and Consul-server bundles first and create a Nomad server AMI with
+Apply the base and Consul-server bundles first and create a Nomad server AMI with
 `make nomad-server-ami`, then apply this bundle:
 
 ~~~sh

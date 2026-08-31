@@ -3,11 +3,11 @@
 Creates one Vault EC2 instance in the base bundle's private subnet using the
 newest self-owned AMI whose name matches `vault-*`. The instance has no public
 IPv4 address and uses only its root disk for Vault data. Its security group
-allows all traffic from the subnet router, so the instance can
+allows all traffic from the public subnet, so the instance can
 be reached through the subnet router without exposing it to the internet.
 
-Apply the base and subnet-router bundles first so their local state contains the
-VPC, subnet, and router outputs, apply the Consul-server bundle, then create or
+Apply the base bundle first so its local state contains the VPC and subnet
+outputs, apply the Consul-server bundle, then create or
 import a Vault AMI with
 `make vault-ami`:
 

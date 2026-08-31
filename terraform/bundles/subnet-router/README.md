@@ -36,12 +36,19 @@ instance. Override instance_type, root_disk_size, or the Ubuntu AMI filters
 when needed.
 
 The router enables IP forwarding, advertises only the base bundle's private
-subnet, and disables EC2 source/destination checking. It receives an ephemeral
-public IPv4 address and permits inbound UDP 41641 for direct Tailscale
-connections; no Elastic IP is allocated. The address may change after the
-instance is stopped or replaced. No `--hostname` is supplied to Tailscale, so
-it uses the AWS/OS hostname and Tailscale generates the machine name
-automatically.
+subnet, and disables EC2 source/destination checking. It also runs a Consul
+client using the version and AMD64 checksum from the Consul-server image. The
+client discovers servers through the `Role=consul-server` EC2 tag and listens
+for DNS only on `127.0.0.1:8600`.
+
+`systemd-resolved` forwards only `*.service.consul` queries to that local
+Consul DNS listener and listens for DNS requests on port 53 on the router's
+interfaces; all other queries continue using the normal resolver. The router
+receives an ephemeral public IPv4 address and permits inbound UDP 41641 for
+direct Tailscale connections; no Elastic IP is allocated. The address may
+change after the instance is stopped or replaced. No `--hostname` is supplied
+to Tailscale, so it uses the AWS/OS hostname and Tailscale generates the
+machine name automatically.
 
 Advertised routes require approval unless the tailnet policy grants automatic
 approval. For example, create a tagged auth key for `tag:subnet-router` and
@@ -65,11 +72,20 @@ Otherwise, approve the route in the Tailscale admin console. Linux tailnet
 clients may also need to enable route acceptance.
 
 Because subnet routes use source NAT by default, private workload security
-groups allow the router's VPC-side private IP for all traffic from the subnet
-router. The router security group permits Tailscale WireGuard traffic, all
+groups allow all traffic from the base bundle's public subnet CIDR. This
+includes the subnet router, but also any other instances placed in that public
+subnet. The router security group permits Tailscale WireGuard traffic, all
 traffic from the private subnet, and outbound traffic; it does not expose
-public SSH. Apply this bundle before the workload bundles so they can read the
-router's private IP from its local state.
+public SSH. The workload bundles read the public subnet directly from the base
+bundle and do not depend on the subnet-router state.
+
+Verify the local DNS setup on the router with:
+
+~~~sh
+systemctl is-active consul systemd-resolved
+resolvectl domain
+resolvectl query <service>.service.consul
+~~~
 
 The auth key is sensitive Terraform input, but cloud-init user data is still
 stored in Terraform state because EC2 receives it at launch. Protect the state

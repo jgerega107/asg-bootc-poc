@@ -31,8 +31,14 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+data "aws_region" "current" {}
+
 locals {
   advertised_routes = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
+
+  consul_server_containerfile = file("${path.module}/../../../images/consul-server/Containerfile")
+  consul_version              = regex("ARG CONSUL_VERSION=([0-9.]+)", local.consul_server_containerfile)[0]
+  consul_sha256               = regex("amd64[)] consul_arch=amd64; consul_sha256=([0-9a-f]+)", local.consul_server_containerfile)[0]
 }
 
 resource "aws_security_group" "tailscale_router" {
@@ -86,6 +92,9 @@ module "subnet_router" {
     route_arg      = "--advertise-routes=${join(",", local.advertised_routes)}"
     username       = var.username
     ssh_public_key = var.ssh_public_key
+    consul_join    = "provider=aws tag_key=Role tag_value=consul-server region=${data.aws_region.current.region}"
+    consul_version = local.consul_version
+    consul_sha256  = local.consul_sha256
   })
 
   tags = merge(var.tags, {

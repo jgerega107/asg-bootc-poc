@@ -6,14 +6,6 @@ data "terraform_remote_state" "base" {
   }
 }
 
-data "terraform_remote_state" "subnet_router" {
-  backend = "local"
-
-  config = {
-    path = "../subnet-router/terraform.tfstate"
-  }
-}
-
 data "terraform_remote_state" "consul_server" {
   backend = "local"
 
@@ -23,6 +15,10 @@ data "terraform_remote_state" "consul_server" {
 }
 
 data "aws_region" "current" {}
+
+data "aws_subnet" "public" {
+  id = data.terraform_remote_state.base.outputs.public_subnet_id
+}
 
 data "aws_ami" "vault" {
   most_recent = true
@@ -63,11 +59,11 @@ resource "aws_security_group" "vault" {
   }
 
   ingress {
-    description = "All traffic from the subnet router"
+    description = "All traffic from the public subnet"
     protocol    = "-1"
     from_port   = 0
     to_port     = 0
-    cidr_blocks = [format("%s/32", data.terraform_remote_state.subnet_router.outputs.private_ip)]
+    cidr_blocks = [data.aws_subnet.public.cidr_block]
   }
 
   ingress {

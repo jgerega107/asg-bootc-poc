@@ -13,11 +13,11 @@ resource "aws_security_group" "nomad_server" {
   }
 
   ingress {
-    description = "All traffic from the subnet router"
+    description = "All traffic from the public subnet"
     protocol    = "-1"
     from_port   = 0
     to_port     = 0
-    cidr_blocks = [format("%s/32", data.terraform_remote_state.subnet_router.outputs.private_ip)]
+    cidr_blocks = [data.aws_subnet.public.cidr_block]
   }
 
   ingress {
