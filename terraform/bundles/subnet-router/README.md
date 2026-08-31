@@ -64,9 +64,12 @@ Replace the example CIDR with the actual private subnet if it differs.
 Otherwise, approve the route in the Tailscale admin console. Linux tailnet
 clients may also need to enable route acceptance.
 
-Private workload security groups must allow the private subnet CIDR for the
-application ports that should be reachable over Tailscale. The router security
-group permits UDP 41641 and outbound traffic; it does not expose SSH.
+Because subnet routes use source NAT by default, private workload security
+groups allow the router's VPC-side private IP for all traffic from the subnet
+router. The router security group permits Tailscale WireGuard traffic, all
+traffic from the private subnet, and outbound traffic; it does not expose
+public SSH. Apply this bundle before the workload bundles so they can read the
+router's private IP from its local state.
 
 The auth key is sensitive Terraform input, but cloud-init user data is still
 stored in Terraform state because EC2 receives it at launch. Protect the state

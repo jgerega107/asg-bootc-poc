@@ -48,6 +48,14 @@ resource "aws_security_group" "tailscale_router" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "All traffic from the private subnet"
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
+  }
+
   egress {
     description = "Outbound traffic for Tailscale and forwarded connections"
     protocol    = "-1"

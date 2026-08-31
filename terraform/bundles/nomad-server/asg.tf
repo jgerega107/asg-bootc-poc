@@ -5,11 +5,19 @@ resource "aws_security_group" "nomad_server" {
   vpc_id      = data.aws_vpc.base.id
 
   ingress {
-    description = "SSH from the public subnet"
+    description = "SSH from the private subnet"
     protocol    = "tcp"
     from_port   = 22
     to_port     = 22
-    cidr_blocks = [data.aws_subnet.public.cidr_block]
+    cidr_blocks = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
+  }
+
+  ingress {
+    description = "All traffic from the subnet router"
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = [format("%s/32", data.terraform_remote_state.subnet_router.outputs.private_ip)]
   }
 
   ingress {

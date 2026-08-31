@@ -6,6 +6,14 @@ data "terraform_remote_state" "base" {
   }
 }
 
+data "terraform_remote_state" "subnet_router" {
+  backend = "local"
+
+  config = {
+    path = "../subnet-router/terraform.tfstate"
+  }
+}
+
 data "terraform_remote_state" "consul_server" {
   backend = "local"
 
@@ -15,10 +23,6 @@ data "terraform_remote_state" "consul_server" {
 }
 
 data "aws_region" "current" {}
-
-data "aws_subnet" "public" {
-  id = data.terraform_remote_state.base.outputs.public_subnet_id
-}
 
 data "aws_ami" "vault" {
   most_recent = true
@@ -51,22 +55,27 @@ resource "aws_security_group" "vault" {
   vpc_id      = data.terraform_remote_state.base.outputs.vpc_id
 
   ingress {
-    description = "SSH from the public subnet"
+    description = "SSH from the private subnet"
     protocol    = "tcp"
     from_port   = 22
     to_port     = 22
-    cidr_blocks = [data.aws_subnet.public.cidr_block]
+    cidr_blocks = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
   }
 
   ingress {
-    description = "Vault API from the public and private subnets"
+    description = "All traffic from the subnet router"
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = [format("%s/32", data.terraform_remote_state.subnet_router.outputs.private_ip)]
+  }
+
+  ingress {
+    description = "Vault API from the private subnet"
     protocol    = "tcp"
     from_port   = 8200
     to_port     = 8200
-    cidr_blocks = [
-      data.aws_subnet.public.cidr_block,
-      data.terraform_remote_state.base.outputs.private_subnet_cidr,
-    ]
+    cidr_blocks = [data.terraform_remote_state.base.outputs.private_subnet_cidr]
   }
 
   egress {
