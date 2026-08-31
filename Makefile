@@ -3,91 +3,73 @@ PODMAN ?= podman
 AWS ?= aws
 TOFU ?= tofu
 
+.DEFAULT_GOAL := help
+
 BUILDER_IMAGE ?= quay.io/centos-bootc/bootc-image-builder:latest
 ROOTFS ?= ext4
 OUTPUT_DIR ?= $(CURDIR)/output
 CONFIG ?= $(CURDIR)/config.toml
 TF_BASE_DIR ?= $(CURDIR)/terraform/bundles/base
-S3_BUCKET ?= $(shell $(TOFU) -chdir=$(TF_BASE_DIR) output -raw bootc_images_bucket_id 2>/dev/null)
-AWS_REGION ?= $(or $(AWS_DEFAULT_REGION),$(shell $(AWS) configure get region 2>/dev/null))
+S3_BUCKET ?=
+AWS_REGION ?= $(AWS_DEFAULT_REGION)
 AMI_TIMESTAMP ?= $(shell date -u +%Y%m%dT%H%M%SZ)
 
-VAULT_IMAGE ?= localhost/fedora-bootc-vault:latest
-VAULT_DIR ?= $(CURDIR)/images/vault
-VAULT_QCOW2 ?= $(OUTPUT_DIR)/vault.qcow2
-VAULT_AMI_NAME ?= vault
-
-NOMAD_SERVER_IMAGE ?= localhost/fedora-bootc-nomad-server:latest
-NOMAD_SERVER_DIR ?= $(CURDIR)/images/nomad-server
-NOMAD_SERVER_QCOW2 ?= $(OUTPUT_DIR)/nomad-server.qcow2
-NOMAD_SERVER_AMI_NAME ?= nomad-server
-
-NOMAD_CLIENT_IMAGE ?= localhost/fedora-bootc-nomad-client:latest
-NOMAD_CLIENT_DIR ?= $(CURDIR)/images/nomad-client
-NOMAD_CLIENT_QCOW2 ?= $(OUTPUT_DIR)/nomad-client.qcow2
-NOMAD_CLIENT_AMI_NAME ?= nomad-client
-
-CONSUL_SERVER_IMAGE ?= localhost/fedora-bootc-consul-server:latest
-CONSUL_SERVER_DIR ?= $(CURDIR)/images/consul-server
-CONSUL_SERVER_QCOW2 ?= $(OUTPUT_DIR)/consul-server.qcow2
-CONSUL_SERVER_AMI_NAME ?= consul-server
+COMPONENTS := vault nomad-server nomad-client consul-server
+IMAGE_TARGETS := $(addsuffix -image,$(COMPONENTS))
+QCOW2_TARGETS := $(addsuffix -qcow2,$(COMPONENTS))
+AMI_TARGETS := $(addsuffix -ami,$(COMPONENTS))
 
 ifneq ($(wildcard $(CONFIG)),)
 CONFIG_MOUNT := -v $(CONFIG):/config.toml:ro
 endif
 
-IMAGE_TARGETS := vault-image nomad-server-image nomad-client-image consul-server-image
-AMI_TARGETS := vault-ami nomad-server-ami nomad-client-ami consul-server-ami
+.PHONY: $(IMAGE_TARGETS) $(QCOW2_TARGETS) $(AMI_TARGETS) help
 
-.PHONY: $(IMAGE_TARGETS) $(AMI_TARGETS) help
-
-# Map each component's settings onto the shared image and AMI recipes.
-define COMPONENT
-$(1)-image $(1)-ami: BUILD_IMAGE := $($(2)_IMAGE)
-$(1)-image: IMAGE_DIR := $($(2)_DIR)
-$(1)-image: ARTIFACT_SOURCE := $(OUTPUT_DIR)/qcow2/disk.qcow2
-$(1)-image: DISK_OUTPUT := $($(2)_QCOW2)
-$(1)-ami: AMI_NAME := $($(2)_AMI_NAME)$(if $(AMI_TIMESTAMP),-$(AMI_TIMESTAMP))
-$(1)-ami: $(1)-image
-endef
-
-$(eval $(call COMPONENT,vault,VAULT))
-$(eval $(call COMPONENT,nomad-server,NOMAD_SERVER))
-$(eval $(call COMPONENT,nomad-client,NOMAD_CLIENT))
-$(eval $(call COMPONENT,consul-server,CONSUL_SERVER))
-
-$(IMAGE_TARGETS):
+$(IMAGE_TARGETS): %-image:
 	$(SUDO) $(PODMAN) build \
 		--network=host \
-		-t $(BUILD_IMAGE) \
-		-f $(IMAGE_DIR)/Containerfile \
-		$(IMAGE_DIR)
-	@mkdir -p $(OUTPUT_DIR)
-	@if test ! -f "$(CONFIG)"; then \
+		-t localhost/fedora-bootc-$*:latest \
+		-f $(CURDIR)/images/$*/Containerfile \
+		$(CURDIR)/images/$*
+
+$(QCOW2_TARGETS): %-qcow2: %-image
+	@set -eu; \
+	mkdir -p "$(OUTPUT_DIR)"; \
+	build_output="$$(mktemp -d "$(OUTPUT_DIR)/.$*.qcow2.XXXXXX")"; \
+	trap '$(SUDO) rm -rf -- "$$build_output"' EXIT; \
+	if test ! -f "$(CONFIG)"; then \
 		echo "Warning: $(CONFIG) not found; no login user will be injected."; \
-	fi
-	$(SUDO) $(PODMAN) run --rm -it \
+	fi; \
+	$(SUDO) $(PODMAN) run --rm \
 		--privileged \
 		--pull=newer \
 		--security-opt label=type:unconfined_t \
 		$(CONFIG_MOUNT) \
-		-v $(OUTPUT_DIR):/output \
+		-v "$$build_output:/output" \
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		$(BUILDER_IMAGE) \
 		--type qcow2 \
 		--rootfs $(ROOTFS) \
-		$(BUILD_IMAGE)
-	$(SUDO) mv -f $(ARTIFACT_SOURCE) $(DISK_OUTPUT)
-	$(SUDO) chown -R $$(id -u):$$(id -g) $(OUTPUT_DIR)
-	@echo "QCOW2 disk created at $(DISK_OUTPUT)"
+		--chown "$$(id -u):$$(id -g)" \
+		localhost/fedora-bootc-$*:latest; \
+	mv -f "$$build_output/qcow2/disk.qcow2" "$(OUTPUT_DIR)/$*.qcow2"; \
+	echo "QCOW2 disk created at $(OUTPUT_DIR)/$*.qcow2"
 
-$(AMI_TARGETS):
+$(AMI_TARGETS): %-ami: %-image
 	@set -eu; \
-	test -n "$(S3_BUCKET)" || { \
-		echo "Unable to read bootc_images_bucket_id from $(TF_BASE_DIR); set S3_BUCKET explicitly." >&2; \
-		exit 1; \
-	}; \
-	test -n "$(AWS_REGION)" || { \
+	s3_bucket="$(S3_BUCKET)"; \
+	if test -z "$$s3_bucket"; then \
+		if ! $(TOFU) -chdir="$(TF_BASE_DIR)" output -json bootc_images_bucket_id >/dev/null 2>&1; then \
+			echo "Unable to read bootc_images_bucket_id from $(TF_BASE_DIR); set S3_BUCKET explicitly." >&2; \
+			exit 1; \
+		fi; \
+		s3_bucket="$$( $(TOFU) -chdir="$(TF_BASE_DIR)" output -raw bootc_images_bucket_id 2>/dev/null)"; \
+	fi; \
+	aws_region="$(AWS_REGION)"; \
+	if test -z "$$aws_region"; then \
+		aws_region="$$( $(AWS) configure get region 2>/dev/null || true)"; \
+	fi; \
+	test -n "$$aws_region" || { \
 		echo "Unable to determine the AWS Region; set AWS_REGION explicitly." >&2; \
 		exit 1; \
 	}; \
@@ -100,40 +82,33 @@ $(AMI_TARGETS):
 		echo "Unable to obtain AWS credentials; configure AWS credentials or run 'aws login'." >&2; \
 		exit 1; \
 	fi; \
-	echo "Building and uploading $(AMI_NAME) AMI with bootc-image-builder..."; \
-	$(SUDO) $(PODMAN) run --rm -it \
+	ami_name="$*$(if $(AMI_TIMESTAMP),-$(AMI_TIMESTAMP))"; \
+	echo "Building and uploading $$ami_name AMI with bootc-image-builder..."; \
+	$(SUDO) $(PODMAN) run --rm --tty \
 		--privileged \
 		--network=host \
 		--pull=newer \
 		--security-opt label=type:unconfined_t \
 		$(CONFIG_MOUNT) \
 		--env-file "$$credentials_file" \
-		-v $(OUTPUT_DIR):/output \
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		$(BUILDER_IMAGE) \
 		--type ami \
 		--rootfs $(ROOTFS) \
-		--aws-ami-name "$(AMI_NAME)" \
-		--aws-bucket "$(S3_BUCKET)" \
-		--aws-region "$(AWS_REGION)" \
-		$(BUILD_IMAGE)
+		--aws-ami-name "$$ami_name" \
+		--aws-bucket "$$s3_bucket" \
+		--aws-region "$$aws_region" \
+		localhost/fedora-bootc-$*:latest
 
 help:
-	@printf '%-25s %s\n' \
-		'make vault-image' 'Build the Vault image and QCOW2 disk' \
-		'make vault-ami' 'Build and upload the Vault AMI' \
-		'make nomad-server-image' 'Build the Nomad server image and QCOW2 disk' \
-		'make nomad-server-ami' 'Build and upload the Nomad server AMI' \
-		'make nomad-client-image' 'Build the Nomad client image and QCOW2 disk' \
-		'make nomad-client-ami' 'Build and upload the Nomad client AMI' \
-		'make consul-server-image' 'Build the Consul server image and QCOW2 disk' \
-		'make consul-server-ami' 'Build and upload the Consul server AMI'
+	@printf '%-27s %s\n' \
+		'make <component>-image' 'Build only the bootc container image' \
+		'make <component>-qcow2' 'Build the container image and a QCOW2 disk' \
+		'make <component>-ami' 'Build the container image and upload an AMI' \
+		'' '' \
+		'Components:' 'vault, nomad-server, nomad-client, consul-server'
 	@echo
-	@echo "All settings can be overridden on the command line (for example, make vault-image SUDO=)."
+	@echo "Settings can be overridden on the command line (for example, make vault-image SUDO=)."
 	@echo "Common: SUDO, PODMAN, AWS, TOFU, BUILDER_IMAGE, ROOTFS, OUTPUT_DIR, CONFIG"
 	@echo "AWS: TF_BASE_DIR, S3_BUCKET, AWS_REGION, AMI_TIMESTAMP"
 	@echo "AMI targets use bootc-image-builder's native AWS uploader; the bucket is used for intermediate storage."
-	@echo "Vault: VAULT_IMAGE, VAULT_DIR, VAULT_QCOW2, VAULT_AMI_NAME"
-	@echo "Nomad server: NOMAD_SERVER_IMAGE, NOMAD_SERVER_DIR, NOMAD_SERVER_QCOW2, NOMAD_SERVER_AMI_NAME"
-	@echo "Nomad client: NOMAD_CLIENT_IMAGE, NOMAD_CLIENT_DIR, NOMAD_CLIENT_QCOW2, NOMAD_CLIENT_AMI_NAME"
-	@echo "Consul server: CONSUL_SERVER_IMAGE, CONSUL_SERVER_DIR, CONSUL_SERVER_QCOW2, CONSUL_SERVER_AMI_NAME"
