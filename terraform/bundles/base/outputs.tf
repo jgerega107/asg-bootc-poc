@@ -4,7 +4,7 @@ output "vpc_id" {
 }
 
 output "public_subnet_id" {
-  description = "ID of the public VPN subnet."
+  description = "ID of the public subnet containing the NAT Gateway and Tailscale router."
   value       = module.vpc.public_subnet_id
 }
 
@@ -24,8 +24,13 @@ output "vpc_dns_resolver_ip" {
 }
 
 output "private_route_table_id" {
-  description = "ID of the route table to use when routing through the VPN instance."
+  description = "ID of the private route table that routes internet traffic through the NAT Gateway."
   value       = module.vpc.private_route_table_id
+}
+
+output "nat_gateway_id" {
+  description = "ID of the single NAT Gateway."
+  value       = module.vpc.nat_gateway_id
 }
 
 output "bootc_images_bucket_id" {
