@@ -1,0 +1,4 @@
+[[customizations.user]]
+name = "your-user"
+key = "ssh-ed25519 AAAA... your-user@example.com"
+groups = ["wheel"]

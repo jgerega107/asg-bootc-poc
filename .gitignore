@@ -1,4 +1,5 @@
 output/
+config.toml
 .terraform*
 *.tfstate
 *.tfstate.backup
